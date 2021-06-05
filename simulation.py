@@ -4,12 +4,12 @@ import numpy as np
 from ExtendedKalman import ExtendedKalmanFilter
 
 class Simulation:
-    def __init__(self,func_system,func_system_derievative,func_observ,func_observ_derievative,controller,start_x
+    def __init__(self,system,controller,start_x
                  ,noise_system=0,noise_observation=0):
-        self.func_system = func_system
-        self.func_system_derievative = func_system_derievative
-        self.func_observ = func_observ
-        self.func_observ_derievative = func_observ_derievative
+        self.func_system = system.func_system
+        self.func_system_derievative = system.func_system_der
+        self.func_observ = system.func_obs
+        self.func_observ_derievative = system.func_obs_der
         self.cotroller=controller
         self.x=start_x
         self.x_history=[start_x]
@@ -21,14 +21,14 @@ class Simulation:
         self.t=[0]
         helper = np.concatenate([self.y,np.zeros([len(self.x)-len(self.y)])])
         kalman_func_system = lambda x,dt,u:Simulation.Runge_Kutta_next_step(self.func_system,x,dt,u,0)
-        self.state_estimator=ExtendedKalmanFilter(kalman_func_system,func_system_derievative,func_observ,func_observ_derievative,
+        self.state_estimator=ExtendedKalmanFilter(kalman_func_system,self.func_system_derievative,self.func_observ,self.func_observ_derievative,
                                                   helper,noise_system,noise_observation)
         self.estimated_x =self.state_estimator.x
         self.estimated_x_history=[self.estimated_x]
 
     def simulate(self,dt,number_of_steps):
         for _ in range(number_of_steps):
-            u = self.cotroller.next_input(self.y,self.t[-1])
+            u = self.cotroller.next_input(self.estimated_x[0:-1],self.t[-1])
             self.u_history.append(u)
             self.x=Simulation.Runge_Kutta_next_step(self.func_system,self.x,dt,u,self.noise_system)
             self.x_history.append(self.x)
@@ -90,3 +90,20 @@ class Simulation:
         helper = np.array(self.u_history)
         for index in indexes:
             plt.plot(self.t,helper[:,int(index)],label="Real state: "+str(index+1))
+
+    def costFunction(self,Q,R,ref,indexes):
+        cost=0
+        for t,u,x in zip(self.t,self.u_history,self.x_history):
+            r = ref(t)[indexes]
+            val1 = np.abs(r-x[indexes]).dot(Q)
+            if isinstance(val1,np.float) or isinstance(val1, np.integer) :
+                val1*=np.abs(r-x[indexes])
+            else:
+                val1=val1.dot(np.abs(r-x[indexes]))
+            val2 = np.abs(u).dot(R)
+            if isinstance(val2, np.float) or isinstance(val2, np.integer) :
+                val2 *= np.abs(u)
+            else:
+                val2 = val2.dot(np.abs(u))
+            cost+=val1+val2
+        return cost/len(self.t)
