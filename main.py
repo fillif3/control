@@ -6,7 +6,7 @@ from controllers import StepResponseController,  PID_controller
 from systems import Spring
 
 NOISE_OBSERVATION=np.array([0.1])
-NOISE_SYSTEM=np.array([0.1,0.1])
+NOISE_SYSTEM=np.array([1,100])
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
@@ -16,48 +16,56 @@ NOISE_SYSTEM=np.array([0.1,0.1])
 
 if __name__ == '__main__':
 
+    costMin=1000000
+    P_min=None
+    I_min=None
+    D_min=None
+    #for p in [0,0.5,1,2.5,5,10]:
+    #    for i in [0,0.5, 1, 2.5, 5, 10]:
+    #        for d in [0, 0.5, 1, 2.5, 5, 10]:
+    system= Spring(1, 1, 1)
 
-    for m in [1]:
-        system= Spring(1, 1, m)
+    plt.xlabel('Time [s]')
 
+    plt.ylabel('Amplitude')
 
-        plt.xlabel('Time [s]')
+    plt.grid()
 
-        plt.ylabel('Amplitude')
+    x=np.array([1,1])
 
-        plt.grid()
+    #con =StepResponseController(1)
+    ref = lambda t:np.array( [np.sin(1*t)])
+    #ref2=lambda t:1
+    con = PID_controller(1,ref,30,2.5,5)
 
-        x=np.array([1,1])
-
-        #con =StepResponseController(1)
-        ref = lambda t:np.array( [np.sin(1*t)])
-        ref2=lambda t:1
-        con = PID_controller(1,ref2,5,3,2)
-
-        sim = Simulation(system,con,x,NOISE_SYSTEM,NOISE_OBSERVATION)
-
-
-        sim.simulate(0.02,800)
-
-
-        #sim.plot_observations()
-        sim.plot_state()
-        arr=[]
-        #sim.plot_estimation()
-        for t in sim.t:
-            arr.append(np.sin(t))
-        plt.plot(sim.t,arr)
+    sim = Simulation(system,con,x,NOISE_SYSTEM,NOISE_OBSERVATION)
 
 
+    sim.simulate(0.02,800)
+
+    cost=sim.costFunction(np.array([1]), np.array([0]), ref, [0])
 
 
+    #sim.plot_observations()
+    sim.plot_state()
+    arr=[]
+    #sim.plot_estimation()
+    for t in sim.t:
+        arr.append(ref(t))
+    plt.plot(sim.t,arr)
+
+
+
+    print('final')
+    print(P_min)
+    print(I_min)
+    print(D_min)
     plt.legend()
     plt.show()
 
 
     sim.plot_input()
     plt.show()
-    print(sim.costFunction(np.array([1]),np.array([0]),lambda t:np.array( [np.sin(1*t)]),[0]))
     #sim.plot_estimation_error()
     #plt.legend()
     #plt.show()
